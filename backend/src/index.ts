@@ -3,6 +3,7 @@ import cors from "cors";
 import { initializeDatabase } from "./db/connection";
 import { initializeEmailService } from "./services/email.service";
 import { createEmailWorker } from "./scheduler/worker";
+import { schedulerService } from "./scheduler/schedulerService";
 import routes from "./api/routes";
 import { config } from "./config";
 
@@ -34,6 +35,10 @@ async function start(): Promise<void> {
     console.log("🚀 Starting email worker...");
     const worker = createEmailWorker();
 
+    // Start scheduler service
+    console.log("🚀 Starting scheduler service...");
+    schedulerService.start();
+
     // Start server
     app.listen(config.server.port, () => {
       console.log(`🚀 Server running on http://localhost:${config.server.port}`);
@@ -53,6 +58,7 @@ async function start(): Promise<void> {
 // Graceful shutdown
 process.on("SIGINT", async () => {
   console.log("\n🛑 Shutting down gracefully...");
+  schedulerService.stop();
   process.exit(0);
 });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { scheduleEmail, sendEmail as sendEmailNow } from "@/lib/api";
 import Papa from "papaparse";
 import { Upload, AlertCircle, X, Send, Clock, ChevronDown, Bold, Italic, Underline, List, ListOrdered, AlignLeft, Link2, Image as ImageIcon, Smile } from "lucide-react";
@@ -29,6 +29,8 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
     contentType: string;
     size: number;
   }>>([]);
+  
+  const editorRef = useRef<HTMLDivElement>(null);
 
   const quickScheduleOptions = [
     { label: "Tomorrow", hours: 24 },
@@ -122,6 +124,45 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
     setAttachments(attachments.filter((_, i) => i !== index));
   };
 
+  // Rich text editor functions
+  const execCommand = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    editorRef.current?.focus();
+  };
+
+  const handleBold = () => execCommand('bold');
+  const handleItalic = () => execCommand('italic');
+  const handleUnderline = () => execCommand('underline');
+  const handleUnorderedList = () => execCommand('insertUnorderedList');
+  const handleOrderedList = () => execCommand('insertOrderedList');
+  const handleAlignLeft = () => execCommand('justifyLeft');
+
+  const handleLink = () => {
+    const url = prompt('Enter URL:');
+    if (url) {
+      execCommand('createLink', url);
+    }
+  };
+
+  const handleInsertImage = () => {
+    const url = prompt('Enter image URL:');
+    if (url) {
+      execCommand('insertImage', url);
+    }
+  };
+
+  const handleEmoji = (emoji: string) => {
+    execCommand('insertText', emoji);
+  };
+
+  const handleEditorChange = () => {
+    if (editorRef.current) {
+      setBody(editorRef.current.innerHTML);
+    }
+  };
+
+  const emojiList = ['😀', '😃', '😄', '😁', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '👍', '👎', '👏', '🙌', '🎉', '🎊', '✨', '⭐', '🔥', '💯'];
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -205,8 +246,7 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSchedule = async () => {
     setError("");
 
     if (!subject.trim()) {
@@ -222,11 +262,18 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
       return;
     }
     if (emails.length === 0) {
-      setError("Please upload a CSV with recipient emails");
+      setError("Please add at least one recipient email");
       return;
     }
     if (!startTime) {
-      setError("Start time is required");
+      setError("Please select a schedule time using the clock icon");
+      return;
+    }
+
+    // Validate scheduled time is in the future
+    const scheduledTime = new Date(startTime);
+    if (scheduledTime <= new Date()) {
+      setError("Scheduled time must be in the future");
       return;
     }
 
@@ -244,6 +291,7 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
         attachments,
       });
 
+      // Reset form
       setSubject("");
       setBody("");
       setSenderEmail("wali.devlover786@gmail.com");
@@ -277,7 +325,7 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
             <h2 className="text-lg font-semibold text-gray-900">Compose New Email</h2>
           </div>
           <div className="flex items-center gap-2">
-            <label className="p-2 text-gray-400 hover:text-gray-600 cursor-pointer">
+            <label className="p-2 text-gray-400 hover:text-gray-600 cursor-pointer" title="Attach files">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
               </svg>
@@ -289,18 +337,16 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
                 accept="*/*"
               />
             </label>
-            <button className="p-2 text-gray-400 hover:text-gray-600">
-              <Clock className="w-5 h-5" />
-            </button>
             <div className="relative">
-              <button
+              <button 
                 onClick={() => setShowDatePicker(!showDatePicker)}
-                className="px-4 py-2 bg-white border border-green-500 text-green-600 rounded-lg hover:bg-green-50 font-medium transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-600"
+                title="Schedule send time"
               >
-                Send Later
+                <Clock className="w-5 h-5" />
               </button>
               {showDatePicker && (
-                <div className="absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-56 z-10">
+                <div className="absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-64 z-10">
                   <div className="mb-3">
                     <label className="block text-xs font-medium text-gray-700 mb-1">Pick date & time</label>
                     <input
@@ -311,6 +357,7 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
                     />
                   </div>
                   <div className="space-y-1">
+                    <p className="text-xs text-gray-500 mb-2">Quick select:</p>
                     {quickScheduleOptions.map((option, idx) => (
                       <button
                         key={idx}
@@ -338,6 +385,26 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
                 </div>
               )}
             </div>
+            {startTime && (
+              <button
+                onClick={handleSchedule}
+                disabled={loading}
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                title="Schedule email for selected time"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Scheduling...
+                  </>
+                ) : (
+                  <>
+                    <Clock className="w-4 h-4" />
+                    Send Later
+                  </>
+                )}
+              </button>
+            )}
             <button
               onClick={handleSendNow}
               disabled={loading}
@@ -367,7 +434,7 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-0">
+          <form onSubmit={(e) => e.preventDefault()} className="space-y-0">
             {/* From Field */}
             <div className="flex items-center py-3 border-b border-gray-200">
               <label className="w-20 text-sm text-gray-600">From</label>
@@ -472,46 +539,116 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
 
             {/* Rich Text Editor Toolbar */}
             <div className="flex items-center gap-1 py-3 border-b border-gray-200">
-              <button type="button" className="p-2 text-gray-600 hover:bg-gray-100 rounded">
+              <button 
+                type="button" 
+                onClick={() => execCommand('undo')}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded"
+                title="Undo"
+              >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
                 </svg>
               </button>
-              <button type="button" className="p-2 text-gray-600 hover:bg-gray-100 rounded">
+              <button 
+                type="button" 
+                onClick={() => execCommand('redo')}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded"
+                title="Redo"
+              >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H11a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6" />
                 </svg>
               </button>
               <div className="w-px h-6 bg-gray-300 mx-1"></div>
-              <button type="button" className="p-2 text-gray-600 hover:bg-gray-100 rounded">
+              <button 
+                type="button" 
+                onClick={handleBold}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded"
+                title="Bold"
+              >
                 <Bold className="w-4 h-4" />
               </button>
-              <button type="button" className="p-2 text-gray-600 hover:bg-gray-100 rounded">
+              <button 
+                type="button" 
+                onClick={handleItalic}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded"
+                title="Italic"
+              >
                 <Italic className="w-4 h-4" />
               </button>
-              <button type="button" className="p-2 text-gray-600 hover:bg-gray-100 rounded">
+              <button 
+                type="button" 
+                onClick={handleUnderline}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded"
+                title="Underline"
+              >
                 <Underline className="w-4 h-4" />
               </button>
               <div className="w-px h-6 bg-gray-300 mx-1"></div>
-              <button type="button" className="p-2 text-gray-600 hover:bg-gray-100 rounded">
+              <button 
+                type="button" 
+                onClick={handleAlignLeft}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded"
+                title="Align Left"
+              >
                 <AlignLeft className="w-4 h-4" />
               </button>
-              <button type="button" className="p-2 text-gray-600 hover:bg-gray-100 rounded">
+              <button 
+                type="button" 
+                onClick={handleUnorderedList}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded"
+                title="Bullet List"
+              >
                 <List className="w-4 h-4" />
               </button>
-              <button type="button" className="p-2 text-gray-600 hover:bg-gray-100 rounded">
+              <button 
+                type="button" 
+                onClick={handleOrderedList}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded"
+                title="Numbered List"
+              >
                 <ListOrdered className="w-4 h-4" />
               </button>
               <div className="w-px h-6 bg-gray-300 mx-1"></div>
-              <button type="button" className="p-2 text-gray-600 hover:bg-gray-100 rounded">
+              <button 
+                type="button" 
+                onClick={handleLink}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded"
+                title="Insert Link"
+              >
                 <Link2 className="w-4 h-4" />
               </button>
-              <button type="button" className="p-2 text-gray-600 hover:bg-gray-100 rounded">
+              <button 
+                type="button" 
+                onClick={handleInsertImage}
+                className="p-2 text-gray-600 hover:bg-gray-100 rounded"
+                title="Insert Image"
+              >
                 <ImageIcon className="w-4 h-4" />
               </button>
-              <button type="button" className="p-2 text-gray-600 hover:bg-gray-100 rounded">
-                <Smile className="w-4 h-4" />
-              </button>
+              <div className="relative group">
+                <button 
+                  type="button"
+                  className="p-2 text-gray-600 hover:bg-gray-100 rounded"
+                  title="Insert Emoji"
+                >
+                  <Smile className="w-4 h-4" />
+                </button>
+                <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-2 hidden group-hover:block z-10 w-64">
+                  <div className="grid grid-cols-8 gap-1">
+                    {emojiList.map((emoji, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleEmoji(emoji)}
+                        className="text-xl hover:bg-gray-100 rounded p-1"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Attachment List */}
@@ -543,15 +680,26 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
               </div>
             )}
 
-            {/* Body Field */}
+            {/* Body Field - Rich Text Editor */}
             <div className="pt-4">
-              <textarea
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                placeholder="Type Your Reply..."
-                className="w-full outline-none text-gray-900 resize-none min-h-[300px]"
-                required
+              <div
+                ref={editorRef}
+                contentEditable
+                onInput={handleEditorChange}
+                className="w-full outline-none text-gray-900 min-h-[300px] prose prose-sm max-w-none focus:ring-0"
+                style={{ 
+                  whiteSpace: 'pre-wrap',
+                  wordWrap: 'break-word'
+                }}
+                suppressContentEditableWarning
+                data-placeholder="Type Your Reply..."
               />
+              <style jsx>{`
+                [contenteditable]:empty:before {
+                  content: attr(data-placeholder);
+                  color: #9CA3AF;
+                }
+              `}</style>
             </div>
           </form>
         </div>

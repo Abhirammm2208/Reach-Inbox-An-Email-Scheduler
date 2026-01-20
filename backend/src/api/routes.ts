@@ -59,7 +59,6 @@ router.post("/schedule", async (req: Request, res: Response): Promise<any> => {
 
     const emailRepository = AppDataSource.getRepository(Email);
     const scheduledRepository = AppDataSource.getRepository(ScheduledEmail);
-    const emailQueue = getEmailQueue();
 
     // Create scheduled email record
     const scheduledEmail = scheduledRepository.create({
@@ -76,10 +75,8 @@ router.post("/schedule", async (req: Request, res: Response): Promise<any> => {
 
     const savedScheduled = await scheduledRepository.save(scheduledEmail);
 
-    // Create email records and queue jobs
-    let delayFromNow = Math.max(0, scheduledAtTime.getTime() - Date.now());
-    const emailRecords: Email[] = [];
-
+    // Create email records (but don't queue them yet)
+    // The scheduler service will queue them when the time arrives
     for (let i = 0; i < emails.length; i++) {
       const email = emailRepository.create({
         recipientEmail: emails[i],
@@ -91,37 +88,10 @@ router.post("/schedule", async (req: Request, res: Response): Promise<any> => {
         scheduledEmailId: savedScheduled.id, // Link to scheduled email
       });
 
-      // Save email record first to get ID
-      const savedEmail = await emailRepository.save(email);
-      emailRecords.push(savedEmail);
-
-      // Queue job with delay
-      const jobDelay = delayFromNow + i * delayBetweenSends;
-
-      // Add job to queue (will be persisted in Redis)
-      const job = await emailQueue.add(
-        "send",
-        {
-          emailId: savedEmail.id,
-          scheduledEmailId: savedScheduled.id,
-          senderEmail,
-          recipientEmail: emails[i],
-          subject,
-          attachments,
-          body,
-        },
-        {
-          delay: jobDelay,
-          jobId: `${savedEmail.id}-${Date.now()}`,
-          removeOnComplete: true,
-          removeOnFail: false,
-        }
-      );
+      await emailRepository.save(email);
 
       console.log(
-        `📧 Scheduled email to ${emails[i]} at ${new Date(
-          Date.now() + jobDelay
-        ).toISOString()}`
+        `📧 Scheduled email to ${emails[i]} for ${scheduledAtTime.toISOString()}`
       );
     }
 
