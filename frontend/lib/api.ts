@@ -20,12 +20,19 @@ export interface ScheduledEmailResponse {
   id: string;
   senderEmail: string;
   subject: string;
+  body: string;
   recipientEmails: string[];
   scheduledAt: string;
   status: "pending" | "processing" | "completed" | "failed";
   sentCount: number;
   failedCount: number;
   createdAt: string;
+  attachments?: Array<{
+    filename: string;
+    content: string;
+    contentType: string;
+    size: number;
+  }>;
 }
 
 export interface SentEmailResponse {
@@ -34,10 +41,17 @@ export interface SentEmailResponse {
   recipientEmail: string;
   senderEmail: string;
   subject: string;
+  body: string;
   status: "sent" | "failed";
   etherealUrl?: string;
   sentAt: string;
   errorMessage?: string;
+  attachments?: Array<{
+    filename: string;
+    content: string;
+    contentType: string;
+    size: number;
+  }>;
 }
 
 export interface StatsResponse {
