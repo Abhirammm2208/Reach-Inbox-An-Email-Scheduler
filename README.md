@@ -1,8 +1,139 @@
 # ReachInbox Email Scheduler
 
-A **production-grade email scheduling service** with a modern React dashboard. Built with TypeScript, Express, BullMQ, Redis, and PostgreSQL.
+A modern email scheduling application with real-time status tracking, rich text editor, and attachment support. Built with Next.js 16, React 19, Express, BullMQ, Redis, and PostgreSQL.
 
-Perfect for scheduling emails at scale with **guaranteed delivery**, **automatic retries**, and **persistent state** across server restarts.
+## ✨ Key Features
+
+- ✅ **Schedule or Send Immediately** - Queue emails for future delivery or send instantly
+- ✅ **Rich Text Editor** - Full HTML formatting with toolbar (bold, italic, lists, links, emojis)
+- ✅ **File Attachments** - Upload images/documents with 5MB limit and preview support
+- ✅ **Bulk Emails** - CSV upload or manual entry for multiple recipients
+- ✅ **Real-time Tracking** - Live status updates (Pending → Processing → Completed)
+- ✅ **Smart Scheduler** - Only queues emails when scheduled time arrives (reduces memory)
+- ✅ **OAuth Login** - Google authentication via NextAuth
+- ✅ **Gmail-style View** - Full-page email detail with attachment preview
+
+## 🏗 Architecture
+
+```
+Frontend (Next.js) → Express API → PostgreSQL
+                         ↓
+              Scheduler Service (1 min intervals)
+                         ↓
+              BullMQ Queue (Redis) → Worker → SMTP
+```
+
+**Flow:** User schedules email → Saved to DB → Scheduler checks every minute → Queues to BullMQ when time arrives → Worker sends via SMTP
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+, PostgreSQL, Redis
+- Ethereal Email account (free at https://ethereal.email)
+
+### Setup
+
+```bash
+# Backend
+cd backend
+npm install
+cp .env.example .env
+# Edit .env with your Ethereal credentials
+
+# Frontend  
+cd ../frontend
+npm install
+cp .env.local.example .env.local
+
+# Start (2 terminals)
+cd backend && npm run dev
+cd frontend && npm run dev
+```
+
+**Access:** http://localhost:3000 (Frontend) | http://localhost:5005 (API)
+
+## 📖 Usage
+
+**Send Now:**
+1. Click "Compose" → Fill details → Use rich text toolbar
+2. Add attachments (optional) → Click "Send"
+
+**Schedule:**
+1. Click "Compose" → Fill details
+2. Click clock icon ⏰ → Select time → Click "Send Later"
+
+**Add Recipients:**
+- Manual: Type email, press Enter
+- CSV: Click "Upload List" → Select file
+
+**View Sent:**
+- Click "Sent" tab → Click email → See details with attachments
+
+## 📊 API Endpoints
+
+**POST** `/api/send` - Send immediately
+**POST** `/api/schedule` - Schedule for later
+**GET** `/api/sent` - List sent emails
+**GET** `/api/scheduled` - List scheduled emails
+**GET** `/api/stats` - Get counts
+
+## 🛠 Tech Stack
+
+**Frontend:** Next.js 16, React 19, TypeScript, TanStack Query, NextAuth, Tailwind CSS
+**Backend:** Express, TypeORM, PostgreSQL, BullMQ, Redis, Nodemailer
+
+## 📁 Structure
+
+```
+backend/src/
+├── api/routes.ts          # REST endpoints
+├── scheduler/             # Scheduler + Worker
+└── db/entities/           # Database models
+
+frontend/
+├── app/dashboard/         # Main UI
+└── components/            # Compose, EmailTable, etc.
+```
+
+## 🔧 Configuration
+
+**Backend** (`backend/.env`):
+```env
+DATABASE_URL=postgresql://postgres:password@localhost:5432/reachinbox
+REDIS_URL=redis://localhost:6379
+PORT=5005
+ETHEREAL_USER=your-user@ethereal.email
+ETHEREAL_PASS=your-password
+WORKER_CONCURRENCY=2
+DELAY_BETWEEN_SENDS_MS=2000
+```
+
+**Frontend** (`frontend/.env.local`):
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5005
+NEXTAUTH_URL=http://localhost:3000
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+```
+
+## 🐛 Troubleshooting
+
+- **Backend won't start:** Check PostgreSQL/Redis running, verify `.env` credentials
+- **Emails not sending:** Get Ethereal credentials, update `.env`, restart backend
+- **Connection error:** Ensure `NEXT_PUBLIC_API_URL=http://localhost:5005`
+- **Scheduled emails not sending:** Wait 1 minute (scheduler interval)
+
+## 📝 Recent Updates
+
+- Smart scheduler service (queues only when time arrives)
+- Rich text editor with formatting toolbar
+- Attachment support with image preview
+- Clock icon UI for scheduling
+- Real-time status tracking
+
+---
+
+**Built for ReachInbox** | MIT License
 
 ## 🎯 Key Features
 
