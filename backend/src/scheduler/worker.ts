@@ -64,12 +64,12 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
   const sentEmailRepository = AppDataSource.getRepository(SentEmail);
 
   try {
-    // Check rate limits
+    // gotta check if we're hitting rate limits first
     const senderLimit = await rateLimiter.checkRateLimit(senderEmail);
     const globalLimit = await rateLimiter.checkGlobalRateLimit();
 
     if (!senderLimit.allowed) {
-      // Reschedule for next hour
+      // sender hit their limit, push to next hour
       const nextTime = rateLimiter.getNextAvailableTime(new Date());
       throw new Error(
         `Sender rate limit exceeded. Rescheduling to ${nextTime.toISOString()}`
@@ -77,24 +77,24 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
     }
 
     if (!globalLimit.allowed) {
-      // Reschedule for next hour
+      // global limit reached, delay this job
       const nextTime = rateLimiter.getNextAvailableTime(new Date());
       throw new Error(
         `Global rate limit exceeded. Rescheduling to ${nextTime.toISOString()}`
       );
     }
 
-    // Apply delay between sends
+    // wait a bit between sends so we don't spam the smtp server
     await applyDelay(config.worker.delayBetweenSendMs);
 
-    // Convert attachments from stored format to nodemailer format
+    // need to convert attachments from base64 to Buffer for nodemailer
     const emailAttachments = attachments?.map(att => ({
       filename: att.filename,
       content: Buffer.from(att.content, 'base64'),
       contentType: att.contentType,
     }));
 
-    // Send email
+    // alright let's actually send this thing
     const result = await sendEmail({
       from: senderEmail,
       to: recipientEmail,
@@ -103,16 +103,16 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
       attachments: emailAttachments,
     });
 
-    // Update database
+    // cool it worked, update the db
     if (result.success) {
-      // Mark email as sent
+      // mark this email as sent
       await emailRepository.update(emailId, {
         status: "sent",
         sentAt: new Date(),
         jobId: job.id,
       });
 
-      // Create sent email record
+      // save it to sent emails table for history
       await sentEmailRepository.insert({
         scheduledEmailId,
         recipientEmail,
@@ -124,10 +124,10 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
         attachments,
       });
 
-      // Update scheduled email stats and check completion
+      // now update the batch stats and see if we're done
       const scheduledRepository = AppDataSource.getRepository(ScheduledEmail);
       
-      // First, get current counts
+      // grab the current state first
       const scheduledEmail = await scheduledRepository.findOne({
         where: { id: scheduledEmailId },
       });
@@ -137,9 +137,9 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
         const newSentCount = scheduledEmail.sentCount + 1;
         const completedCount = newSentCount + scheduledEmail.failedCount;
 
-        // Update sent count and status in one operation
+        // update everything in one go
         if (completedCount >= totalEmails) {
-          // All emails processed - mark as completed
+          // yay all done! mark batch as completed
           await scheduledRepository.update(scheduledEmailId, {
             sentCount: newSentCount,
             status: "completed",
@@ -147,7 +147,7 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
           });
           console.log(`✅ Scheduled email batch completed: ${scheduledEmailId} (${newSentCount}/${totalEmails} sent)`);
         } else {
-          // Still processing - increment count and update status
+          // still got more to send, just increment the counter
           await scheduledRepository.update(scheduledEmailId, {
             sentCount: newSentCount,
             status: scheduledEmail.status === "pending" ? "processing" : scheduledEmail.status,
@@ -161,14 +161,14 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
-    // Check if this is a rate limit error - if so, reschedule
+    // check if this failed bc of rate limit, if so we'll try again later
     if (errorMessage.includes("rate limit")) {
       const match = errorMessage.match(/Rescheduling to (.+)$/);
       if (match && match[1]) {
         const nextTime = new Date(match[1]);
         const delay = Math.max(0, nextTime.getTime() - Date.now());
 
-        // Re-queue with new delay
+        // throw it back in the queue with a delay
         const emailQueue = getEmailQueue();
         await emailQueue.add("send", job.data, {
           delay,
@@ -180,7 +180,7 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
       }
     }
 
-    // Mark as failed
+    // welp this one failed, mark it
     const emailRepository = AppDataSource.getRepository(Email);
     const sentEmailRepository = AppDataSource.getRepository(SentEmail);
 
@@ -190,7 +190,7 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
       jobId: job.id,
     });
 
-    // Create sent email record with failure
+    // still need to save it for the audit trail
     await sentEmailRepository.insert({
       scheduledEmailId,
       recipientEmail,
@@ -202,10 +202,10 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
       attachments,
     });
 
-    // Update scheduled email stats and check completion
+    // update the batch stats even for failures
     const scheduledRepository = AppDataSource.getRepository(ScheduledEmail);
     
-    // First, get current counts
+    // get the latest numbers
     const scheduledEmail = await scheduledRepository.findOne({
       where: { id: scheduledEmailId },
     });
@@ -215,9 +215,9 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
       const newFailedCount = scheduledEmail.failedCount + 1;
       const completedCount = scheduledEmail.sentCount + newFailedCount;
 
-      // Update failed count and status in one operation
+      // update fail count and check if we're done
       if (completedCount >= totalEmails) {
-        // All emails processed - mark as completed
+        // batch is done (even with some failures)
         await scheduledRepository.update(scheduledEmailId, {
           failedCount: newFailedCount,
           status: "completed",
@@ -225,7 +225,7 @@ async function processEmailJob(job: Job<EmailJobData>): Promise<void> {
         });
         console.log(`✅ Scheduled email batch completed (with failures): ${scheduledEmailId} (${scheduledEmail.sentCount}/${totalEmails} sent, ${newFailedCount} failed)`);
       } else {
-        // Still processing - increment count
+        // more emails to go, just bump the fail counter
         await scheduledRepository.update(scheduledEmailId, {
           failedCount: newFailedCount,
         });

@@ -79,14 +79,14 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
     const newAttachments: typeof attachments = [];
 
     for (const file of fileArray) {
-      // Limit file size to 5MB
+      // cap it at 5mb per file
       if (file.size > 5 * 1024 * 1024) {
         setError(`File ${file.name} is too large. Maximum size is 5MB.`);
         setTimeout(() => setError(""), 3000);
         continue;
       }
 
-      // Convert file to base64 using Promise
+      // convert file to base64 for sending
       try {
         const base64 = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
@@ -97,7 +97,7 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
           reader.readAsDataURL(file);
         });
 
-        const content = base64.split(',')[1]; // Remove data:type;base64, prefix
+        const content = base64.split(',')[1]; // get rid of the data url prefix
 
         newAttachments.push({
           filename: file.name,
@@ -111,12 +111,12 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
       }
     }
 
-    // Update state with all new attachments
+    // add all the new attachments
     if (newAttachments.length > 0) {
       setAttachments([...attachments, ...newAttachments]);
     }
 
-    // Clear input
+    // clear the file input
     e.target.value = '';
   };
 
@@ -124,7 +124,7 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
     setAttachments(attachments.filter((_, i) => i !== index));
   };
 
-  // Rich text editor functions
+  // rich text editor commands
   const execCommand = (command: string, value?: string) => {
     document.execCommand(command, false, value);
     editorRef.current?.focus();
@@ -270,7 +270,7 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
       return;
     }
 
-    // Validate scheduled time is in the future
+    // make sure they picked a time in the future
     const scheduledTime = new Date(startTime);
     if (scheduledTime <= new Date()) {
       setError("Scheduled time must be in the future");
@@ -286,12 +286,12 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
         emails,
         senderEmail,
         startTime,
-        delayBetweenSends: delayBetweenSends * 1000, // Convert to milliseconds
+        delayBetweenSends: delayBetweenSends * 1000, // convert seconds to ms
         hourlyLimit,
         attachments,
       });
 
-      // Reset form
+      // clear everything
       setSubject("");
       setBody("");
       setSenderEmail("wali.devlover786@gmail.com");
@@ -316,7 +316,7 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
+        {/* top header with title and buttons */}
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
           <div className="flex items-center gap-2">
             <button onClick={onClose} className="text-gray-600 hover:text-gray-900">
@@ -425,7 +425,7 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
           </div>
         </div>
 
-        {/* Body */}
+        {/* main form body */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex gap-2 mb-4">
@@ -435,7 +435,7 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
           )}
 
           <form onSubmit={(e) => e.preventDefault()} className="space-y-0">
-            {/* From Field */}
+            {/* sender email field */}
             <div className="flex items-center py-3 border-b border-gray-200">
               <label className="w-20 text-sm text-gray-600">From</label>
               <div className="flex-1 flex items-center gap-2">
@@ -451,7 +451,7 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
               </div>
             </div>
 
-            {/* To Field */}
+            {/* recipient email field */}
             <div className="flex items-start py-3 border-b border-gray-200">
               <label className="w-20 text-sm text-gray-600 pt-1">To</label>
               <div className="flex-1">
@@ -500,7 +500,7 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
               </label>
             </div>
 
-            {/* Subject Field */}
+            {/* subject line */}
             <div className="flex items-center py-3 border-b border-gray-200">
               <label className="w-20 text-sm text-gray-600">Subject</label>
               <input
@@ -513,7 +513,7 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
               />
             </div>
 
-            {/* Delay and Hourly Limit */}
+            {/* delay between sends and hourly rate limit */}
             <div className="flex items-center gap-6 py-3 border-b border-gray-200">
               <div className="flex items-center gap-2">
                 <label className="text-sm text-gray-600">Delay between 2 emails</label>
@@ -537,7 +537,7 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
               </div>
             </div>
 
-            {/* Rich Text Editor Toolbar */}
+            {/* rich text editor toolbar */}
             <div className="flex items-center gap-1 py-3 border-b border-gray-200">
               <button 
                 type="button" 
@@ -651,7 +651,7 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
               </div>
             </div>
 
-            {/* Attachment List */}
+            {/* show attached files if any */}
             {attachments.length > 0 && (
               <div className="py-3 border-b border-gray-200">
                 <div className="flex flex-wrap gap-2">
@@ -680,7 +680,7 @@ export function ComposeEmailModal({ isOpen, onClose, onSuccess }: ComposeEmailMo
               </div>
             )}
 
-            {/* Body Field - Rich Text Editor */}
+            {/* main email body editor */}
             <div className="pt-4">
               <div
                 ref={editorRef}

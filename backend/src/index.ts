@@ -9,37 +9,37 @@ import { config } from "./config";
 
 const app = express();
 
-// Middleware
+// middleware setup
 app.use(cors({ origin: config.server.corsOrigin }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check
+// health check endpoint
 app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// API routes
+// all the main api routes
 app.use("/api", routes);
 
-// Start server
+// start the whole thing up
 async function start(): Promise<void> {
   try {
-    // Initialize database
+    // connect to the database first
     await initializeDatabase();
 
-    // Initialize email service
+    // setup email service
     await initializeEmailService();
 
-    // Start worker in background
+    // fire up the worker to process email jobs
     console.log("🚀 Starting email worker...");
     const worker = createEmailWorker();
 
-    // Start scheduler service
+    // start the scheduler that checks for pending emails
     console.log("🚀 Starting scheduler service...");
     schedulerService.start();
 
-    // Start server
+    // start the express server
     app.listen(config.server.port, () => {
       console.log(`🚀 Server running on http://localhost:${config.server.port}`);
       console.log(`📧 Worker concurrency: ${config.worker.concurrency}`);
@@ -55,7 +55,7 @@ async function start(): Promise<void> {
   }
 }
 
-// Graceful shutdown
+// handle graceful shutdown when i ctrl+c
 process.on("SIGINT", async () => {
   console.log("\n🛑 Shutting down gracefully...");
   schedulerService.stop();

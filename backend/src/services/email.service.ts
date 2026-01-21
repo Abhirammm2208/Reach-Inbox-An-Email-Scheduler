@@ -4,7 +4,7 @@ import { config } from "../config";
 let transporter: Transporter;
 
 export async function initializeEmailService(): Promise<void> {
-  // For development/testing, use Ethereal Email (fake SMTP)
+  // for dev/testing, i'm using ethereal (fake smtp)
   if (config.email.ethereal.user && config.email.ethereal.pass) {
     transporter = nodemailer.createTransport({
       host: "smtp.ethereal.email",
@@ -16,7 +16,7 @@ export async function initializeEmailService(): Promise<void> {
       },
     });
 
-    // Verify connection
+    // make sure it connects
     try {
       await transporter.verify();
       console.log("✅ Email service configured with Ethereal");
@@ -59,7 +59,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
       attachments: options.attachments,
     });
 
-    // Ethereal provides preview URL for testing
+    // ethereal gives you a preview link - super useful for testing
     const etherealUrl = nodemailer.getTestMessageUrl(info);
 
     return {

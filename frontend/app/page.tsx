@@ -13,7 +13,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (status === "authenticated" && session?.user) {
-      // Store user data in localStorage for compatibility with existing code
+      // save user data to localstorage so other code can use it
       localStorage.setItem("isLoggedIn", "true");
       localStorage.setItem("userEmail", session.user.email || "");
       localStorage.setItem("userName", session.user.name || "User");
@@ -45,13 +45,13 @@ export default function LoginPage() {
     <div className="min-h-screen bg-white flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-10">
-          {/* Title */}
+          {/* login title */}
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-gray-900 mb-8">
               Login
             </h1>
             
-            {/* Google Login Button */}
+            {/* google oauth button */}
             <button
               onClick={handleGoogleLogin}
               disabled={isLoading || status === "loading"}
@@ -80,7 +80,7 @@ export default function LoginPage() {
             
             <p className="text-gray-500 text-sm my-4">or sign up through email</p>
             
-            {/* Email Input */}
+            {/* email field */}
             <input
               type="email"
               value={email}
@@ -89,7 +89,7 @@ export default function LoginPage() {
               className="w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 text-gray-900"
             />
             
-            {/* Password Input */}
+            {/* password field */}
             <input
               type="password"
               value={password}
@@ -98,7 +98,7 @@ export default function LoginPage() {
               className="w-full px-4 py-3 mb-6 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 text-gray-900"
             />
             
-            {/* Login Button */}
+            {/* submit button */}
             <button
               onClick={handleDemoLogin}
               disabled={isLoading}

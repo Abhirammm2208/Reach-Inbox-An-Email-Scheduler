@@ -65,7 +65,7 @@ export function EmailTable({ emails, loading, type, onDeleteClick, onEmailClick 
           >
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
-                {/* Time Badge */}
+                {/* when it's scheduled for */}
                 <div className="mb-2">
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
                     <Clock className="w-3 h-3 mr-1" />
@@ -73,7 +73,7 @@ export function EmailTable({ emails, loading, type, onDeleteClick, onEmailClick 
                   </span>
                 </div>
 
-                {/* Recipients */}
+                {/* who it's going to */}
                 <div className="mb-2">
                   <span className="text-sm font-medium text-gray-700">
                     To: {recipientEmails.slice(0, 2).join(", ")}
@@ -81,19 +81,19 @@ export function EmailTable({ emails, loading, type, onDeleteClick, onEmailClick 
                   </span>
                 </div>
 
-                {/* Subject */}
+                {/* email subject */}
                 <h3 className="text-gray-900 font-semibold text-base mb-1">
                   {email.subject}
                 </h3>
 
-                {/* Preview */}
+                {/* preview text */}
                 <p className="text-gray-500 text-sm line-clamp-2">
                   {sentCount !== undefined && `${sentCount}/${recipientEmails.length} sent • `}
                   Email scheduled for delivery
                 </p>
               </div>
 
-              {/* Status Badge */}
+              {/* status indicator */}
               <div className="flex items-center gap-2">
                 <StatusBadge status={status} />
                 {onDeleteClick && (

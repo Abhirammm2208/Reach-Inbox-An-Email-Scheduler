@@ -41,7 +41,7 @@ router.post("/schedule", async (req: Request, res: Response): Promise<any> => {
       attachments,
     }: ScheduleEmailRequest = req.body;
 
-    // Validate input
+    // make sure we have everything we need
     if (!subject || !body || !emails || emails.length === 0 || !senderEmail || !startTime) {
       return res.status(400).json({
         error: "Missing required fields: subject, body, emails, senderEmail, startTime",
@@ -60,7 +60,7 @@ router.post("/schedule", async (req: Request, res: Response): Promise<any> => {
     const emailRepository = AppDataSource.getRepository(Email);
     const scheduledRepository = AppDataSource.getRepository(ScheduledEmail);
 
-    // Create scheduled email record
+    // create the main scheduled email record
     const scheduledEmail = scheduledRepository.create({
       senderEmail,
       subject,
@@ -75,8 +75,7 @@ router.post("/schedule", async (req: Request, res: Response): Promise<any> => {
 
     const savedScheduled = await scheduledRepository.save(scheduledEmail);
 
-    // Create email records (but don't queue them yet)
-    // The scheduler service will queue them when the time arrives
+    // create individual email records - scheduler will queue them when it's time
     for (let i = 0; i < emails.length; i++) {
       const email = emailRepository.create({
         recipientEmail: emails[i],
@@ -85,7 +84,7 @@ router.post("/schedule", async (req: Request, res: Response): Promise<any> => {
         body,
         status: "pending",
         attachments,
-        scheduledEmailId: savedScheduled.id, // Link to scheduled email
+        scheduledEmailId: savedScheduled.id, // link to parent batch
       });
 
       await emailRepository.save(email);
@@ -109,9 +108,7 @@ router.post("/schedule", async (req: Request, res: Response): Promise<any> => {
   }
 });
 
-/**
- * Send emails immediately (no scheduling)
- */
+// endpoint to send emails immediately (no scheduling)
 router.post("/send", async (req: Request, res: Response): Promise<any> => {
   try {
     const {
@@ -123,7 +120,7 @@ router.post("/send", async (req: Request, res: Response): Promise<any> => {
       attachments,
     }: Omit<ScheduleEmailRequest, 'startTime'> = req.body;
 
-    // Validate input
+    // make sure we have what we need
     if (!subject || !body || !emails || emails.length === 0 || !senderEmail) {
       return res.status(400).json({
         error: "Missing required fields: subject, body, emails, senderEmail",
@@ -134,13 +131,13 @@ router.post("/send", async (req: Request, res: Response): Promise<any> => {
     const scheduledRepository = AppDataSource.getRepository(ScheduledEmail);
     const emailQueue = getEmailQueue();
 
-    // Create scheduled email record with immediate send time
+    // create scheduled record with send time = now
     const scheduledEmail = scheduledRepository.create({
       senderEmail,
       subject,
       body,
       recipientEmails: emails,
-      scheduledAt: new Date(), // Send now
+      scheduledAt: new Date(), // right now
       delayBetweenSendMs: delayBetweenSends,
       status: "pending",
       attachments,
@@ -148,7 +145,7 @@ router.post("/send", async (req: Request, res: Response): Promise<any> => {
 
     const savedScheduled = await scheduledRepository.save(scheduledEmail);
 
-    // Create email records and queue jobs immediately
+    // queue everything immediately
     for (let i = 0; i < emails.length; i++) {
       const email = emailRepository.create({
         recipientEmail: emails[i],
@@ -160,10 +157,10 @@ router.post("/send", async (req: Request, res: Response): Promise<any> => {
         attachments,
       });
 
-      // Save email record first to get ID
+      // save the record first so we have an id
       const savedEmail = await emailRepository.save(email);
 
-      // Queue job with minimal delay (immediate + stagger)
+      // add it to the queue with a stagger delay
       const jobDelay = i * delayBetweenSends;
 
       await emailQueue.add(
@@ -201,9 +198,7 @@ router.post("/send", async (req: Request, res: Response): Promise<any> => {
   }
 });
 
-/**
- * Get scheduled emails (pending/processing)
- */
+// get scheduled emails (pending/processing)
 router.get("/scheduled", async (req: Request, res: Response) => {
   try {
     const limit = parseInt(req.query.limit as string) || 20;
@@ -221,7 +216,7 @@ router.get("/scheduled", async (req: Request, res: Response) => {
       skip: offset,
     });
 
-    // Get email counts for each scheduled batch
+    // get email counts for each scheduled batch
     const emailRepository = AppDataSource.getRepository(Email);
     const scheduledWithCounts = await Promise.all(
       data.map(async (scheduled) => {
@@ -249,9 +244,7 @@ router.get("/scheduled", async (req: Request, res: Response) => {
   }
 });
 
-/**
- * Get sent emails
- */
+// get sent emails
 router.get("/sent", async (req: Request, res: Response) => {
   try {
     const limit = parseInt(req.query.limit as string) || 20;
@@ -278,9 +271,7 @@ router.get("/sent", async (req: Request, res: Response) => {
   }
 });
 
-/**
- * Get statistics
- */
+// get stats for the dashboard
 router.get("/stats", async (req: Request, res: Response) => {
   try {
     const emailRepository = AppDataSource.getRepository(Email);
@@ -312,9 +303,7 @@ router.get("/stats", async (req: Request, res: Response) => {
   }
 });
 
-/**
- * Get pending emails (not yet sent)
- */
+// get pending emails (haven't sent yet)
 router.get("/pending", async (req: Request, res: Response) => {
   try {
     const limit = parseInt(req.query.limit as string) || 20;
@@ -342,35 +331,33 @@ router.get("/pending", async (req: Request, res: Response) => {
   }
 });
 
-/**
- * Get email statistics (counts for scheduled, sent, failed)
- */
+// another stats endpoint with different data
 router.get("/stats", async (req: Request, res: Response): Promise<any> => {
   try {
     const emailRepository = AppDataSource.getRepository(Email);
     const scheduledEmailRepository = AppDataSource.getRepository(ScheduledEmail);
 
-    // Get sent count (status = 'sent')
+    // count how many got sent
     const sentCount = await emailRepository.count({
       where: { status: "sent" },
     });
 
-    // Get failed count
+    // count failures
     const failedCount = await emailRepository.count({
       where: { status: "failed" },
     });
 
-    // Get scheduled batches count
+    // count scheduled batches
     const scheduledCount = await scheduledEmailRepository.count({
       where: { status: "pending" },
     });
 
-    // Get processing scheduled batches
+    // count ones currently processing
     const processingCount = await scheduledEmailRepository.count({
       where: { status: "processing" },
     });
 
-    // Get completed scheduled batches
+    // count completed batches
     const completedScheduledCount = await scheduledEmailRepository.count({
       where: { status: "completed" },
     });

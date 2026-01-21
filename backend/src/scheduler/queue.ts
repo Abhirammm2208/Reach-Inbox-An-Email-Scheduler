@@ -40,7 +40,7 @@ export function getEmailQueue(): Queue {
     };
     emailQueue = new Queue("emails", queueOptions);
 
-    // Setup event listeners
+    // listen for errors
     emailQueue.on("error", (err) => {
       console.error("❌ Queue error:", err);
     });

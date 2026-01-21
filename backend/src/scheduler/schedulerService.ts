@@ -6,11 +6,9 @@ import { LessThanOrEqual } from "typeorm";
 
 class SchedulerService {
   private intervalId: NodeJS.Timeout | null = null;
-  private readonly CHECK_INTERVAL = 60 * 1000; // Check every 1 minute
+  private readonly CHECK_INTERVAL = 60 * 1000; // checking every minute if anything needs to go out
 
-  /**
-   * Start the scheduler service
-   */
+  // kick off the scheduler
   start() {
     if (this.intervalId) {
       console.log("⚠️ Scheduler is already running");
@@ -19,10 +17,10 @@ class SchedulerService {
 
     console.log("🕐 Starting scheduler service...");
     
-    // Run immediately on start
+    // run it right away first time
     this.checkAndQueueEmails();
     
-    // Then run every minute
+    // then keep checking every minute
     this.intervalId = setInterval(() => {
       this.checkAndQueueEmails();
     }, this.CHECK_INTERVAL);
@@ -30,9 +28,7 @@ class SchedulerService {
     console.log("✅ Scheduler service started");
   }
 
-  /**
-   * Stop the scheduler service
-   */
+  // shut it down cleanly
   stop() {
     if (this.intervalId) {
       clearInterval(this.intervalId);
@@ -41,18 +37,16 @@ class SchedulerService {
     }
   }
 
-  /**
-   * Check for scheduled emails that need to be queued
-   */
+  // this is where we check what needs to be sent
   private async checkAndQueueEmails() {
     try {
       const scheduledRepository = AppDataSource.getRepository(ScheduledEmail);
       const emailRepository = AppDataSource.getRepository(Email);
       const emailQueue = getEmailQueue();
 
-      // Find scheduled emails that:
-      // 1. Are pending
-      // 2. Have a scheduledAt time that has passed or is within the next minute
+      // looking for emails that need to go out:
+      // - still pending
+      // - time has come (or coming up in next minute)
       const now = new Date();
       const oneMinuteFromNow = new Date(now.getTime() + this.CHECK_INTERVAL);
 
@@ -64,14 +58,14 @@ class SchedulerService {
       });
 
       if (dueScheduledEmails.length === 0) {
-        return; // No emails to process
+        return; // nothing to do right now
       }
 
       console.log(`📬 Found ${dueScheduledEmails.length} scheduled email batch(es) ready to queue`);
 
       for (const scheduledEmail of dueScheduledEmails) {
         try {
-          // Find all pending emails for this scheduled batch
+          // grab all the emails that haven't been sent yet for this batch
           const pendingEmails = await emailRepository.find({
             where: {
               scheduledEmailId: scheduledEmail.id,
@@ -80,20 +74,20 @@ class SchedulerService {
           });
 
           if (pendingEmails.length === 0) {
-            // Mark as completed if no pending emails
+            // weird, no emails left? mark batch as done i guess
             scheduledEmail.status = "completed";
             scheduledEmail.completedAt = new Date();
             await scheduledRepository.save(scheduledEmail);
             continue;
           }
 
-          // Calculate delay from scheduled time (not from now)
+          // figure out how much to delay based on scheduled time
           const scheduledTime = new Date(scheduledEmail.scheduledAt).getTime();
           const baseDelay = Math.max(0, scheduledTime - Date.now());
 
           console.log(`📤 Queueing ${pendingEmails.length} emails for batch ${scheduledEmail.id}`);
 
-          // Queue all emails with staggered delays
+          // add all emails to queue with small delays between each
           for (let i = 0; i < pendingEmails.length; i++) {
             const email = pendingEmails[i];
             const jobDelay = baseDelay + (i * scheduledEmail.delayBetweenSendMs);
@@ -118,7 +112,7 @@ class SchedulerService {
             );
           }
 
-          // Update status to processing (it's now queued)
+          // mark it as processing so we don't queue it again
           scheduledEmail.status = "processing";
           await scheduledRepository.save(scheduledEmail);
 
@@ -133,5 +127,5 @@ class SchedulerService {
   }
 }
 
-// Export singleton instance
+// just use this one instance everywhere
 export const schedulerService = new SchedulerService();

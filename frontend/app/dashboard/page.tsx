@@ -22,7 +22,7 @@ export default function DashboardPage() {
   const [selectedEmail, setSelectedEmail] = useState<ScheduledEmailResponse | SentEmailResponse | null>(null);
 
   useEffect(() => {
-    // Check authentication from NextAuth session or localStorage
+    // check if they're logged in (either nextauth or localstorage)
     if (status === "unauthenticated") {
       const isLoggedIn = localStorage.getItem("isLoggedIn");
       if (!isLoggedIn) {
@@ -31,7 +31,7 @@ export default function DashboardPage() {
       }
     }
 
-    // Priority: Use NextAuth session data, fallback to localStorage
+    // use nextauth session if available, otherwise fall back to localstorage
     if (status === "authenticated" && session?.user) {
       setUserEmail(session.user.email || "");
       setUserName(session.user.name || "User");

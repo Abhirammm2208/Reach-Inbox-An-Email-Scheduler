@@ -19,12 +19,12 @@ export function EmailDetailView({ email, onBack, type }: EmailDetailViewProps) {
     ? (email as ScheduledEmailResponse).scheduledAt
     : (email as SentEmailResponse).sentAt;
   
-  // Get attachments if they exist
+  // grab attachments if there are any
   const attachments = (email as any).attachments || [];
 
   const handleDownloadAttachment = (attachment: any) => {
     try {
-      // Convert base64 to blob
+      // convert base64 back to a blob
       const byteCharacters = atob(attachment.content);
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) {
@@ -33,7 +33,7 @@ export function EmailDetailView({ email, onBack, type }: EmailDetailViewProps) {
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], { type: attachment.contentType });
       
-      // Create download link
+      // create download link and click it
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -49,7 +49,7 @@ export function EmailDetailView({ email, onBack, type }: EmailDetailViewProps) {
 
   return (
     <div className="h-full flex flex-col bg-white">
-      {/* Header with Back Button */}
+      {/* top header with back button */}
       <div className="border-b border-gray-200 px-6 py-4">
         <button
           onClick={onBack}
@@ -61,12 +61,12 @@ export function EmailDetailView({ email, onBack, type }: EmailDetailViewProps) {
         <h1 className="text-2xl font-bold text-gray-900">{email.subject}</h1>
       </div>
 
-      {/* Email Content */}
+      {/* main email content */}
       <div className="flex-1 overflow-y-auto px-6 py-6">
-        {/* Email Header Info */}
+        {/* sender and recipient info */}
         <div className="bg-gray-50 rounded-lg p-6 mb-6 border border-gray-200">
           <div className="space-y-4">
-            {/* From */}
+            {/* from field */}
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
                 {email.senderEmail.charAt(0).toUpperCase()}
@@ -79,7 +79,7 @@ export function EmailDetailView({ email, onBack, type }: EmailDetailViewProps) {
               </div>
             </div>
 
-            {/* To */}
+            {/* to field */}
             <div className="pl-14">
               <p className="text-xs text-gray-500 mb-2">To</p>
               <div className="flex flex-wrap gap-2">
@@ -96,7 +96,7 @@ export function EmailDetailView({ email, onBack, type }: EmailDetailViewProps) {
           </div>
         </div>
 
-        {/* Email Body */}
+        {/* the actual email body */}
         <div className="mb-8">
           <div
             className="prose prose-base max-w-none text-gray-800"
@@ -104,7 +104,7 @@ export function EmailDetailView({ email, onBack, type }: EmailDetailViewProps) {
           />
         </div>
 
-        {/* Attachments */}
+        {/* attachments if any */}
         {attachments.length > 0 && (
           <div className="border-t border-gray-200 pt-6">
             <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -116,7 +116,7 @@ export function EmailDetailView({ email, onBack, type }: EmailDetailViewProps) {
                 const isImage = attachment.contentType?.startsWith('image/');
                 
                 if (isImage) {
-                  // Image attachment with preview
+                  // image with preview
                   return (
                     <div
                       key={index}
@@ -139,7 +139,7 @@ export function EmailDetailView({ email, onBack, type }: EmailDetailViewProps) {
                     </div>
                   );
                 } else {
-                  // Non-image attachment with download button
+                  // regular file with download button
                   return (
                     <div
                       key={index}

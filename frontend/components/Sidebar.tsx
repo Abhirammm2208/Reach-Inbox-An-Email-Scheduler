@@ -38,7 +38,7 @@ export function Sidebar({
 
     fetchStats();
     
-    // Refresh stats every 5 seconds
+    // refresh stats every 5 secs
     const interval = setInterval(fetchStats, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -48,19 +48,19 @@ export function Sidebar({
     { id: "sent", label: "Sent", icon: Send, badge: sentCount },
   ];
 
-  // Get user initials
+  // get user initials for avatar
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
   return (
     <div className="w-64 bg-white border-r border-gray-200 flex flex-col h-screen">
-      {/* Logo */}
+      {/* app logo */}
       <div className="p-6 border-b border-gray-200">
         <h1 className="text-2xl font-bold text-gray-900">ONB</h1>
       </div>
 
-      {/* User Profile */}
+      {/* user info section */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold text-lg">
@@ -72,7 +72,7 @@ export function Sidebar({
           </div>
         </div>
         
-        {/* Compose Button */}
+        {/* compose email button */}
         <button
           onClick={onComposeClick}
           className="w-full bg-[#4CAF50] hover:bg-[#45A049] text-white font-medium py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm"
@@ -82,7 +82,7 @@ export function Sidebar({
         </button>
       </div>
 
-      {/* Navigation Menu */}
+      {/* main nav menu */}
       <nav className="flex-1 px-4 py-4 overflow-y-auto">
         {menuItems.map((item) => {
           const Icon = item.icon;
@@ -116,7 +116,7 @@ export function Sidebar({
         })}
       </nav>
 
-      {/* Logout */}
+      {/* logout button */}
       <div className="p-4 border-t border-gray-200">
         <button
           onClick={onLogout}

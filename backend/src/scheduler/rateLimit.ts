@@ -15,27 +15,24 @@ export class RateLimiter {
     this.redis = getRedis();
   }
 
-  /**
-   * Check if an email can be sent for this sender in the current hour
-   * Uses Redis-backed sliding window counter
-   */
+  // check if this sender can send another email right now
   async checkRateLimit(senderEmail: string): Promise<RateLimitResult> {
     const now = new Date();
     const hourWindow = this.getHourWindow(now);
     const key = `rate_limit:${senderEmail}:${hourWindow}`;
 
-    // Get current count
+    // see how many they've sent this hour
     const currentCount = await this.redis.get(key);
     const count = currentCount ? parseInt(currentCount, 10) : 0;
 
     const maxPerSender = config.rateLimit.maxEmailsPerHourPerSender;
 
     if (count < maxPerSender) {
-      // Increment and set expiry
+      // they're good, bump the counter
       await this.redis.incr(key);
-      await this.redis.expire(key, 3600); // 1 hour expiry
+      await this.redis.expire(key, 3600); // expires in an hour
 
-      // Calculate remaining
+      // tell them how many they have left
       const resetTime = new Date(now);
       resetTime.setHours(resetTime.getHours() + 1);
       resetTime.setMinutes(0, 0, 0);
@@ -58,9 +55,7 @@ export class RateLimiter {
     };
   }
 
-  /**
-   * Check global rate limit (all senders combined)
-   */
+  // check the global limit across all senders
   async checkGlobalRateLimit(): Promise<RateLimitResult> {
     const now = new Date();
     const hourWindow = this.getHourWindow(now);
@@ -97,19 +92,15 @@ export class RateLimiter {
     };
   }
 
-  /**
-   * Calculate next available window if rate limited
-   */
+  // figure out when they can try again
   getNextAvailableTime(currentTime: Date): Date {
     const next = new Date(currentTime);
     next.setHours(next.getHours() + 1);
-    next.setMinutes(0, 1, 0); // 1 minute into next hour
+    next.setMinutes(0, 1, 0); // start of next hour plus a min
     return next;
   }
 
-  /**
-   * Get hour window for a given time (e.g., 2026-01-20-15 for 3 PM)
-   */
+  // make a key for the current hour bucket (like 2026-01-20-15 for 3pm)
   private getHourWindow(date: Date): string {
     const year = date.getUTCFullYear();
     const month = String(date.getUTCMonth() + 1).padStart(2, "0");
@@ -118,9 +109,7 @@ export class RateLimiter {
     return `${year}-${month}-${day}-${hour}`;
   }
 
-  /**
-   * Get current rate limit stats for a sender
-   */
+  // grab current stats for a sender (useful for debugging)
   async getStats(senderEmail: string): Promise<{
     sentThisHour: number;
     remainingThisHour: number;
