@@ -417,12 +417,4 @@ Jane,jane@example.com
 
 ---
 
-## 📚 Additional Documentation
-
-- [REQUIREMENTS_ANALYSIS.md](REQUIREMENTS_ANALYSIS.md) - Requirements compliance checklist
-- [DEMO_SCRIPT.md](DEMO_SCRIPT.md) - 5-minute video demo guide
-- [SAMPLE_EMAILS.csv](SAMPLE_EMAILS.csv) - Test data
-
----
-
 **Built for ReachInbox Assignment**  Production-Ready
