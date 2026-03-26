@@ -415,6 +415,3 @@ Jane,jane@example.com
 - Check `REDIS_URL` in backend `.env`
 - Verify rate limit config values are numbers (not strings)
 
----
-
-**Built for ReachInbox Assignment**  Production-Ready
